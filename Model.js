@@ -443,6 +443,10 @@ function restartedTimer(timer, nowMs) {
   return withTimer(timer, { running: true, done: false, doneAt: 0, endsAt: nowMs + ms, remainingMs: ms })
 }
 
+function renamedTimer(timer, label) {
+  return withTimer(timer, { label: plainLabel(label) })
+}
+
 function finishedTimer(timer) {
   return withTimer(timer, { running: false, done: true, doneAt: Number(timer.endsAt) || 0, endsAt: 0, remainingMs: 0 })
 }
@@ -952,7 +956,7 @@ if (typeof module !== "undefined") {
     occurrenceAfter: occurrenceAfter, occurrenceAtOrBefore: occurrenceAtOrBefore, alarmNextAt: alarmNextAt, alarmDue: alarmDue,
     isRepeating: isRepeating, nextAlarm: nextAlarm, alarmSummary: alarmSummary, sortAlarms: sortAlarms,
     newTimer: newTimer, timerRemaining: timerRemaining, timerProgress: timerProgress, pausedTimer: pausedTimer,
-    resumedTimer: resumedTimer, resetTimer: resetTimer, restartedTimer: restartedTimer, finishedTimer: finishedTimer,
+    resumedTimer: resumedTimer, resetTimer: resetTimer, restartedTimer: restartedTimer, renamedTimer: renamedTimer, finishedTimer: finishedTimer,
     extendedTimer: extendedTimer, sortTimers: sortTimers, timerTitle: timerTitle,
     emptyStopwatch: emptyStopwatch, stopwatchElapsed: stopwatchElapsed, stopwatchStarted: stopwatchStarted,
     stopwatchPaused: stopwatchPaused, stopwatchLapped: stopwatchLapped, lapRows: lapRows,

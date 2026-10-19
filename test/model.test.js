@@ -260,6 +260,15 @@ test("timers are defined by their end instant", () => {
   assert.strictEqual(M.timerTitle(M.newTimer(90 * MIN, "", NOW)), "1 h 30 min timer")
 })
 
+test("renaming a timer keeps its countdown", () => {
+  const t = M.pausedTimer(M.newTimer(5 * MIN, "", NOW), NOW + 2 * MIN)
+  const named = M.renamedTimer(t, "  Pasta <al dente>  ")
+  assert.strictEqual(named.label, "Pasta ‹al dente›")
+  assert.strictEqual(named.remainingMs, 3 * MIN)
+  assert.strictEqual(named.running, false)
+  assert.strictEqual(M.timerTitle(M.renamedTimer(named, "")), "5 min timer")
+})
+
 test("extending a timer", () => {
   const t = M.newTimer(5 * MIN, "", NOW)
   assert.strictEqual(M.extendedTimer(t, NOW + MIN).endsAt, NOW + 10 * MIN)

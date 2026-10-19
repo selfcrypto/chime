@@ -34,7 +34,7 @@ bind a key, below). It has four tabs.
 |---|---|---|
 | **Alarm** | Time, optional label, repeat days. One-shot alarms switch themselves off after ringing. | The next alarm's time (`󰀠 07:30`, `󰀠 Mon 07:30` when it is not today, `󰚎` while snoozed) |
 | **World** | Search a city, country or zone name; pin the ones you want in the bar; rename them. | `󰇧 New York 08:45   Tokyo 21:45` |
-| **Timer** | Presets 1, 5, 10, 15, 30 min and 1 h, or type `1h30m`, `90s`, `12:30`. Several can run at once. | Each running timer counting down (`󰔟 04:59`, `󰏤` while paused) |
+| **Timer** | Presets 1, 5, 10, 15, 30 min and 1 h, or type `1h30m`, `90s`, `12:30`. Several can run at once; the pencil names one while it runs. | Each running timer counting down (`󰔟 04:59`, `󰏤` while paused) |
 | **Stopwatch** | Start, pause, lap, reset, to a tenth of a second. | `󱎫 01:23` |
 
 When an alarm or timer goes off, a card comes up on every screen over
@@ -87,6 +87,7 @@ want.
 |---|---|
 | `timer <duration> <label>` | Start a timer: `timer 5 ""`, `timer 90s Eggs`, `1h30m`, `12:30`. Prints its id. |
 | `pauseTimer <id>` · `resumeTimer <id>` · `toggleTimer <id>` · `resetTimer <id>` · `cancelTimer <id>` · `cancelTimers` | |
+| `renameTimer <id> <label>` | `""` puts the default name back. |
 | `stopwatch start\|pause\|toggle\|lap\|reset` | |
 | `alarm <time> <label> <days>` | `alarm 07:30 "Wake up" 1,2,3,4,5` — days are `0`–`6`, Sunday is `0`, `""` means once. Prints its id. |
 | `enableAlarm <id>` · `disableAlarm <id>` · `toggleAlarm <id>` · `removeAlarm <id>` | |

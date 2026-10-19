@@ -406,6 +406,7 @@ Item {
   function resetTimer(id) { return replaceTimer(id, function(t) { return Model.resetTimer(t) }) }
   function restartTimer(id) { return replaceTimer(id, function(t, now) { return Model.restartedTimer(t, now) }) }
   function extendTimer(id, extraMs) { return replaceTimer(id, function(t, now) { return Model.extendedTimer(t, now, extraMs) }) }
+  function renameTimer(id, label) { return replaceTimer(id, function(t) { return Model.renamedTimer(t, label) }) }
 
   // Running pauses, paused resumes, done runs again.
   function toggleTimer(id) {
@@ -1168,6 +1169,7 @@ Item {
     function toggleTimer(id: string): string { return root.toggleTimer(id) ? "ok" : "unknown" }
     function resetTimer(id: string): string { return root.resetTimer(id) ? "ok" : "unknown" }
     function cancelTimer(id: string): string { return root.removeTimer(id) ? "ok" : "unknown" }
+    function renameTimer(id: string, label: string): string { return root.renameTimer(id, label) ? "ok" : "unknown" }
     function cancelTimers(): string { return String(root.cancelTimers()) }
 
     function stopwatch(action: string): string {

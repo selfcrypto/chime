@@ -56,6 +56,10 @@ Panel {
     if (renamingClock === "" || !service) return
     if (service.clockIndex(renamingClock) < 0) cancelRename()
   }
+  onTimersChanged: {
+    if (renamingTimer === "" || !service) return
+    if (service.timerIndex(renamingTimer) < 0) cancelRename()
+  }
   readonly property var laps: Model.lapRows(stopwatch ? stopwatch.laps : [])
   readonly property bool ringing: !!service && service.ringing !== null
 
@@ -86,15 +90,17 @@ Panel {
   property string alarmError: ""
   property string timerError: ""
   property string renamingClock: ""
+  property string renamingTimer: ""
   // The text being typed lives here, not in the row: the list rebuilds its
-  // rows whenever a clock changes, and a rebuilt field would come up empty.
+  // rows whenever a clock or timer changes, and a rebuilt field would come
+  // up empty.
   property string renameDraft: ""
   property double pickerClosedAt: 0
   // The rename field lives in a list delegate that the list can rebuild under
   // it, so the block follows the rename state rather than that field's focus.
   readonly property bool editorFocused: timeField.activeFocus || labelField.activeFocus
     || customField.activeFocus || timerLabelField.activeFocus
-  readonly property bool keysBlocked: editorFocused || renamingClock !== "" || zonePicker.popupOpen
+  readonly property bool keysBlocked: editorFocused || renamingClock !== "" || renamingTimer !== "" || zonePicker.popupOpen
 
   function tabIndex() {
     for (var i = 0; i < tabs.length; i++) if (tabs[i].value === tab) return i
@@ -302,27 +308,40 @@ Panel {
     }
   }
 
-  // ---- World clock rename.
+  // ---- World clock and timer rename. One rename at a time: starting one
+  // drops the other.
 
   function startRename(tz) {
     var index = service ? service.clockIndex(tz) : -1
     renameDraft = index >= 0 ? clocks[index].label : ""
+    renamingTimer = ""
     renamingClock = tz
   }
 
-  // The rename state goes first: renaming replaces the clock list, which
-  // rebuilds the row holding the field.
+  function startRenameTimer(id) {
+    var timer = service ? service.timerById(id) : null
+    renameDraft = timer ? timer.label : ""
+    renamingClock = ""
+    renamingTimer = id
+  }
+
+  // The rename state goes first: renaming replaces the clock or timer list,
+  // which rebuilds the row holding the field.
   function commitRename() {
     var tz = renamingClock
+    var id = renamingTimer
     var text = renameDraft
     renamingClock = ""
+    renamingTimer = ""
     renameDraft = ""
     if (service && tz !== "") service.renameClock(tz, text)
+    if (service && id !== "") service.renameTimer(id, text)
     refocusKeys()
   }
 
   function cancelRename() {
     renamingClock = ""
+    renamingTimer = ""
     renameDraft = ""
     refocusKeys()
   }
@@ -330,18 +349,20 @@ Panel {
   // A rename field lost the keyboard. If that was the list rebuilding its
   // rows, the replacement field takes the keyboard back within a frame; if
   // nobody has it a beat later, the user clicked away and the rename ends.
-  function settleRename(tz) {
-    renameSettle.tz = tz
+  // The key is the clock's zone or the timer's id.
+  function settleRename(key) {
+    renameSettle.key = key
     renameSettle.restart()
   }
 
   Timer {
     id: renameSettle
-    property string tz: ""
+    property string key: ""
     interval: 80
     repeat: false
     onTriggered: {
-      if (root.renamingClock === "" || root.renamingClock !== tz) return
+      var current = root.renamingClock !== "" ? root.renamingClock : root.renamingTimer
+      if (current === "" || current !== key) return
       var focused = keyCatcher.Window.activeFocusItem
       if (focused && focused.objectName === "chime-rename") return
       root.cancelRename()
@@ -349,12 +370,13 @@ Panel {
   }
 
   function cancelEditors() {
-    var wasEditing = editingAlarm !== "" || renamingClock !== "" || zonePicker.popupOpen
+    var wasEditing = editingAlarm !== "" || renamingClock !== "" || renamingTimer !== "" || zonePicker.popupOpen
       || customField.activeFocus || timerLabelField.activeFocus
     editingAlarm = ""
     alarmError = ""
     timerError = ""
     renamingClock = ""
+    renamingTimer = ""
     renameDraft = ""
     if (zonePicker.popupOpen) zonePicker.close()
     // A tab click while a field had the keyboard would otherwise leave no
@@ -1315,14 +1337,15 @@ Panel {
     }
   }
 
-  // One timer: title and status, the countdown, pause/resume or restart,
-  // reset and remove, with a progress rail underneath.
+  // One timer: title and status, the countdown, rename, pause/resume or
+  // restart, reset and remove, with a progress rail underneath.
   component TimerRow: CursorSurface {
     id: trow
     required property var modelData
     required property int index
 
     readonly property bool isCursor: root.tab === "timer" && root.cursor === index
+    readonly property bool renaming: root.renamingTimer === modelData.id
     readonly property double remaining: Model.timerRemaining(modelData, root.nowMs)
     readonly property real progress: Model.timerProgress(modelData, root.nowMs)
     readonly property string status: modelData.done
@@ -1365,6 +1388,7 @@ Panel {
 
           Text {
             textFormat: Text.PlainText
+            visible: !trow.renaming
             width: parent.width
             text: Model.timerTitle(trow.modelData)
             color: trow.modelData.done ? root.dim : root.fg
@@ -1372,6 +1396,39 @@ Panel {
             font.pixelSize: Style.font.subtitle
             font.bold: true
             elide: Text.ElideRight
+          }
+
+          // Same field as the clock rename, and for the same reason the
+          // draft lives on the panel: a finishing timer rebuilds the list.
+          TextField {
+            id: timerRenameField
+            objectName: "chime-rename"
+            visible: trow.renaming
+            width: parent.width
+            verticalPadding: Style.space(2)
+            placeholderText: Model.humanDuration(trow.modelData.durationMs) + " timer"
+            foreground: root.fg
+            font.family: root.fontFamily
+
+            function takeUp() {
+              text = root.renameDraft
+              root.focusLater(timerRenameField)
+            }
+
+            Component.onCompleted: if (visible) takeUp()
+            onVisibleChanged: if (visible) takeUp()
+            onTextChanged: if (trow.renaming && activeFocus) root.renameDraft = text
+            onActiveFocusChanged: if (!activeFocus && trow.renaming) root.settleRename(trow.modelData.id)
+            Keys.onPressed: function(event) {
+              if (event.key === Qt.Key_Escape) {
+                root.cancelRename()
+                event.accepted = true
+              } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                root.renameDraft = text
+                root.commitRename()
+                event.accepted = true
+              }
+            }
           }
 
           Text {
@@ -1403,6 +1460,14 @@ Panel {
           anchors.right: parent.right
           anchors.verticalCenter: parent.verticalCenter
           spacing: Style.space(2)
+
+          PanelActionButton {
+            iconText: Model.ICON_PENCIL
+            tooltipText: "Rename"
+            foreground: root.fg
+            fontFamily: root.fontFamily
+            onClicked: root.startRenameTimer(trow.modelData.id)
+          }
 
           PanelActionButton {
             iconText: trow.modelData.running ? Model.ICON_PAUSE : (trow.modelData.done ? Model.ICON_REPLAY : Model.ICON_PLAY)
